@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Typing Speed Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .text-to-type {
+            background: #f0f8ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 16px;
+            line-height: 1.6;
+            border: 2px solid #e3f2fd;
+        }
+
+        .typing-area {
+            width: 100%;
+            height: 200px;
+            font-size: 16px;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+        }
+
+        .typing-area:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            min-height: 50px;
+            touch-action: manipulation;
+        }
+
+        .button:active {
+            background: #0056b3;
+        }
+
+        .debug {
+            background: #fff3cd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .typing-area {
+                height: 150px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Typing Speed Test</h1>
+
+        <div class="debug" id="debug">
+            JavaScript loading...
+        </div>
+
+        <div class="text-to-type" id="textDisplay">
+            The quick brown fox jumps over the lazy dog. This pangram contains every letter of the alphabet and is commonly used for typing practice. It helps test both speed and accuracy across all keyboard keys.
+        </div>
+
+        <textarea
+            class="typing-area"
+            id="typingInput"
+            placeholder="Click 'Start Test' then start typing here..."
+            disabled
+        ></textarea>
+
+        <div class="stats" id="statsDisplay">
+            Time: 0s | WPM: 0 | Accuracy: 100%
+        </div>
+
+        <div style="text-align: center;">
+            <button class="button" id="startButton" onclick="startTypingTest()">Start Test</button>
+            <button class="button" id="finishButton" onclick="finishTypingTest()" style="display:none;">Finish Test</button>
+        </div>
+    </div>
+
+    <script>
+        // Immediate execution - no waiting for DOM
+        console.log("Script executing immediately...");
+
+        // Set debug message right away
+        setTimeout(function() {
+            var debugEl = document.getElementById('debug');
+            if (debugEl) {
+                debugEl.innerHTML = "✅ JavaScript working! Ready to test.";
+            }
+        }, 100);
+
+        // Global variables
+        var testActive = false;
+        var testStartTime = null;
+        var statsUpdateTimer = null;
+        var testTextContent = "";
+
+        // Get text from URL parameter or use default
+        function getTestText() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var textType = urlParams.get('text') || 'A';
+
+            var texts = {
+                'A': "The quick brown fox jumps over the lazy dog. This pangram contains every letter of the alphabet and is commonly used for typing practice. It helps test both speed and accuracy across all keyboard keys.",
+                'B': "In a hole in the ground there lived a hobbit. Not a nasty, dirty, wet hole filled with the ends of worms and an oozy smell, nor yet a dry, bare, sandy hole with nothing in it to sit down on or to eat."
+            };
+
+            return texts[textType] || texts['A'];
+        }
+
+        function startTypingTest() {
+            console.log("Starting test...");
+
+            // Get elements
+            var typingInput = document.getElementById('typingInput');
+            var startButton = document.getElementById('startButton');
+            var finishButton = document.getElementById('finishButton');
+            var debugEl = document.getElementById('debug');
+
+            // Get and set test text
+            testTextContent = getTestText();
+            var textDisplay = document.getElementById('textDisplay');
+            if (textDisplay) {
+                textDisplay.innerHTML = testTextContent;
+            }
+
+            // Enable input and update UI
+            typingInput.disabled = false;
+            typingInput.placeholder = "Start typing the text above...";
+            typingInput.focus();
+
+            startButton.style.display = 'none';
+            finishButton.style.display = 'inline-block';
+
+            if (debugEl) {
+                debugEl.innerHTML = "🏃 Test active! Start typing...";
+            }
+
+            // Set up input listener
+            typingInput.oninput = function() {
+                if (!testActive) {
+                    testActive = true;
+                    testStartTime = new Date().getTime();
+
+                    // Start updating stats every 200ms
+                    statsUpdateTimer = setInterval(updateTestStats, 200);
+
+                    if (debugEl) {
+                        debugEl.innerHTML = "⏱️ Timer started! Keep typing...";
+                    }
+                }
+            };
+
+            // Also listen for keydown as backup
+            typingInput.onkeydown = function() {
+                if (!testActive) {
+                    typingInput.oninput();
+                }
+            };
+
+            console.log("Test setup complete");
+        }
+
+        function updateTestStats() {
+            var typingInput = document.getElementById('typingInput');
+            var statsDisplay = document.getElementById('statsDisplay');
+
+            if (!typingInput || !statsDisplay || !testStartTime) return;
+
+            var typedText = typingInput.value;
+            var currentTime = new Date().getTime();
+            var timeElapsedSeconds = (currentTime - testStartTime) / 1000;
+
+            // Calculate WPM (words = characters / 5)
+            var charCount = typedText.length;
+            var wordCount = Math.max(1, Math.floor(charCount / 5));
+            var wpm = timeElapsedSeconds > 0 ? Math.round((wordCount / timeElapsedSeconds) * 60) : 0;
+
+            // Calculate accuracy
+            var accuracy = calculateTypingAccuracy(testTextContent, typedText);
+
+            // Update display
+            statsDisplay.innerHTML = "Time: " + Math.round(timeElapsedSeconds) + "s | WPM: " + wpm + " | Accuracy: " + accuracy + "%";
+
+            console.log("Stats - Time:", timeElapsedSeconds, "WPM:", wpm, "Accuracy:", accuracy);
+        }
+
+        function calculateTypingAccuracy(original, typed) {
+            if (!typed || typed.length === 0) return 100;
+
+            var correct = 0;
+            var maxLength = Math.min(original.length, typed.length);
+
+            for (var i = 0; i < maxLength; i++) {
+                if (original.charAt(i) === typed.charAt(i)) {
+                    correct++;
+                }
+            }
+
+            return Math.round((correct / typed.length) * 100);
+        }
+
+        function finishTypingTest() {
+            console.log("Finishing test...");
+
+            // Stop timer
+            if (statsUpdateTimer) {
+                clearInterval(statsUpdateTimer);
+            }
+
+            var typingInput = document.getElementById('typingInput');
+            var debugEl = document.getElementById('debug');
+
+            if (!typingInput || !testStartTime) {
+                alert("Error: Test not properly started!");
+                return;
+            }
+
+            var typedText = typingInput.value;
+            var endTime = new Date().getTime();
+            var totalTimeSeconds = (endTime - testStartTime) / 1000;
+
+            // Final calculations
+            var charCount = typedText.length;
+            var wordCount = Math.max(1, Math.floor(charCount / 5));
+            var finalWPM = Math.round((wordCount / totalTimeSeconds) * 60);
+            var finalAccuracy = calculateTypingAccuracy(testTextContent, typedText);
+
+            // Get URL parameters
+            var urlParams = new URLSearchParams(window.location.search);
+            var device = urlParams.get('device') || 'unknown';
+            var subject = urlParams.get('subject') || 'test';
+            var textType = urlParams.get('text') || 'A';
+
+            var results = {
+                subject: subject,
+                device: device,
+                text: textType,
+                wpm: finalWPM,
+                accuracy: finalAccuracy,
+                timeSeconds: Math.round(totalTimeSeconds),
+                wordCount: wordCount,
+                charCount: charCount,
+                timestamp: new Date().toISOString()
+            };
+
+            // Show results
+            alert("Test Complete!\n\nWPM: " + finalWPM + "\nAccuracy: " + finalAccuracy + "%\nTime: " + Math.round(totalTimeSeconds) + "s\n\nResults copied to console!");
+
+            console.log("=== TYPING TEST RESULTS ===");
+            console.log(JSON.stringify(results, null, 2));
+
+            if (debugEl) {
+                debugEl.innerHTML = "✅ Test complete! WPM: " + finalWPM + ", Accuracy: " + finalAccuracy + "%";
+            }
+        }
+    </script>
+</body>
+</html>
